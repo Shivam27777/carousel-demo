@@ -3,12 +3,17 @@
     width: 100%;
     margin: 0 auto;
     max-width: 1000px;
+
+
   }
   
   .carousel-container {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display:flex;
+    flex-direction:row;
+    width:800px
   }
   
   .carousel-empty {
@@ -53,4 +58,16 @@
   
   .delete-button:hover {
     opacity: 1;
+  }
+  .carousel-item {
+    transition: transform 0.6s ease-in-out !important;
+  }
+  
+  .carousel-root {
+    position: relative;
+  }
+  
+  .carousel {
+    width: 100%;
+    overflow: hidden;
   }

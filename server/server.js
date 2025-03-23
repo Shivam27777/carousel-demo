@@ -5,7 +5,6 @@ const path = require('path');
 const imageRoutes = require('./routes/imageRoutes');
 const config = require('./config');
 
-// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 

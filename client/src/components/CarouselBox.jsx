@@ -8,8 +8,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Card,
-  CardMedia,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -20,6 +18,8 @@ import {
   Pause, 
   PlayArrow 
 } from '@mui/icons-material';
+import { Carousel } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import {
   DndContext,
   closestCenter,
@@ -38,7 +38,7 @@ import {
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
 import './Carousel.css';
 
-// Sortable thumbnail component
+// Sortable Thumbnail Component
 const SortableThumbnail = ({ image, index, currentIndex, onClick }) => {
   const theme = useTheme();
   const {
@@ -88,7 +88,7 @@ const SortableThumbnail = ({ image, index, currentIndex, onClick }) => {
   );
 };
 
-const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
+const CarouselBox = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -99,7 +99,6 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Setup sensors for drag detection
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -109,7 +108,7 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
     useSensor(KeyboardSensor)
   );
 
-  // Update local state when images prop changes
+
   useEffect(() => {
     setCarouselImages(images || []);
   }, [images]);
@@ -136,29 +135,28 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
     timerRef.current = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselImages.length);
     }, rotationInterval);
-
-    // Cleanup on unmount or interval change
+  
     return () => clearInterval(timerRef.current);
   }, [currentIndex, carouselImages.length, rotationInterval, isPaused]);
 
-  // Navigate to previous image
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) => 
       prevIndex === 0 ? carouselImages.length - 1 : prevIndex - 1
     );
   };
 
-  // Navigate to next image
   const goToNext = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselImages.length);
   };
 
-  // Toggle pause/play
+  const handleCarouselSelect = (selectedIndex) => {
+    setCurrentIndex(selectedIndex);
+  };
+
   const togglePause = () => {
     setIsPaused(!isPaused);
   };
 
-  // Handle image deletion
   const confirmDelete = (id) => {
     setImageToDelete(id);
     setDeleteDialogOpen(true);
@@ -172,26 +170,20 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
     setImageToDelete(null);
   };
 
-  // Handle drag start
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
   };
 
-  // Handle drag end
   const handleDragEnd = (event) => {
     const { active, over } = event;
     setActiveId(null);
 
     if (active.id !== over.id) {
       setCarouselImages((items) => {
-        // Find the indices of the dragged and target items
         const oldIndex = items.findIndex(item => item._id === active.id);
         const newIndex = items.findIndex(item => item._id === over.id);
-        
-        // Create the new array with the items reordered
         const newItems = arrayMove(items, oldIndex, newIndex);
-        
-        // Update the current index if necessary
+
         if (oldIndex === currentIndex) {
           setCurrentIndex(newIndex);
         } else if (
@@ -201,12 +193,11 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
           const adjustment = oldIndex < newIndex ? -1 : 1;
           setCurrentIndex(currentIndex + adjustment);
         }
-        
-        // Notify parent component if callback provided
+
         if (onReorder) {
           onReorder(newItems);
         }
-        
+
         return newItems;
       });
     }
@@ -215,30 +206,44 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
   return (
     <Box className="carousel-root">
       <Box className="carousel-container" sx={{ position: 'relative' }}>
-        {/* Main Image Display */}
-        <Card elevation={0}>
-          <CardMedia
-            component="img"
-            height={isMobile ? 300 : 400}
-            image={carouselImages[currentIndex]?.imageUrl ? 
-              `http://localhost:5000${carouselImages[currentIndex].imageUrl}` : 
-              ''}
-            alt={carouselImages[currentIndex]?.title || ''}
-            sx={{ objectFit: 'contain', backgroundColor: '#f5f5f5' }}
-          />
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" component="h2">
-              {carouselImages[currentIndex]?.title || ''}
-            </Typography>
-            {carouselImages[currentIndex]?.description && (
-              <Typography variant="body2" color="text.secondary">
-                {carouselImages[currentIndex].description}
-              </Typography>
-            )}
-          </Box>
-        </Card>
+        <Carousel
+          activeIndex={currentIndex}
+          onSelect={handleCarouselSelect}
+          interval={isPaused ? null : rotationInterval}
+          indicators={false}
+          controls={false}
+        >
+          {carouselImages.map((_, index) => {
+            return (
+              <Carousel.Item key={index}>
+                <Box display="flex" justifyContent="center" gap={2} m={2}>
+                  
+                    <Box
+                      key={carouselImages[index]._id}
+                      sx={{
+                        maxWidth: '900px',
+                        height: isMobile ? 200 : 400,
+                        position: 'relative',
+                      }}
+                    >
+                      <img
+                        src={`http://localhost:5000${carouselImages[index].imageUrl}`}
+                        alt={carouselImages[index].title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          borderRadius: '4px'
+                        }}
+                      />
+                    </Box>
+                
+                </Box>
+              </Carousel.Item>
+            );
+          })}
+        </Carousel>
 
-        {/* Delete Button */}
         <IconButton
           className="delete-button"
           color="error"
@@ -253,7 +258,6 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
           <Delete />
         </IconButton>
 
-        {/* Navigation Controls */}
         <Box className="carousel-controls">
           <IconButton
             className="nav-button prev"
@@ -284,7 +288,7 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
         </Box>
       </Box>
 
-      {/* Carousel Footer */}
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
         <Button 
           variant="outlined" 
@@ -299,7 +303,6 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
         </Typography>
       </Box>
 
-      {/* Draggable Thumbnails with dnd-kit */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -333,7 +336,6 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
           </SortableContext>
         </Box>
 
-        {/* Drag Overlay */}
         <DragOverlay>
           {activeId ? (
             <Box
@@ -361,7 +363,6 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
         </DragOverlay>
       </DndContext>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -383,4 +384,4 @@ const Carousel = ({ images, rotationInterval = 5000, onDelete, onReorder }) => {
   );
 };
 
-export default Carousel;
+export default CarouselBox;

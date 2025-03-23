@@ -13,7 +13,7 @@ import {
   import AddIcon from '@mui/icons-material/Add';
 import TimerIcon from '@mui/icons-material/Timer';
 import ReorderIcon from '@mui/icons-material/Reorder';
-import Carousel from './Carousel';
+import CarouselBox from './CarouselBox';
 import ImageUpload from './ImageUpload';
 import SequenceManager from './SequenceManager';
 import IntervalControl from './IntervalControl';
@@ -111,7 +111,7 @@ function Home() {
         ) : (
           <Box>
             <Paper elevation={3} sx={{ mb: 4, p: 2, borderRadius: 2, overflow: 'hidden' }}>
-              <Carousel 
+              <CarouselBox 
                 images={images} 
                 rotationInterval={rotationInterval}
                 onDelete={handleDeleteImage}
