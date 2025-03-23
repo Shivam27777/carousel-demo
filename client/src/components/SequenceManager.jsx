@@ -1,27 +1,136 @@
 import React, { useState, useEffect } from 'react';
-import { ListGroup, Button, Image, Row, Col } from 'react-bootstrap';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
+  IconButton,
+  Paper,
+  Divider
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import SaveIcon from '@mui/icons-material/Save';
+import RestoreIcon from '@mui/icons-material/Restore';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 
-const SequenceManager = ({ images, onUpdateSequence }) => {
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable item component
+const SortableItem = ({ image, index }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition
+  } = useSortable({ id: image._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <React.Fragment>
+      <ListItem
+        ref={setNodeRef}
+        style={style}
+        sx={{ 
+          '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' },
+          cursor: 'move'
+        }}
+        {...attributes}
+      >
+        <div {...listeners}>
+          <DragIndicatorIcon 
+            sx={{ mr: 2, color: 'text.secondary' }} 
+          />
+        </div>
+        <Typography 
+          variant="body2" 
+          sx={{ width: 30, mr: 2, color: 'text.secondary' }}
+        >
+          {index + 1}
+        </Typography>
+        <ListItemAvatar>
+          <Avatar 
+            variant="rounded"
+            src={`http://localhost:5000${image.imageUrl}`}
+            alt={image.title || 'Image'}
+            sx={{ width: 60, height: 60 }}
+          />
+        </ListItemAvatar>
+        <ListItemText 
+          primary={image.title || 'Untitled'}
+          secondary={image.description ? (
+            image.description.length > 80 
+              ? `${image.description.substring(0, 80)}...` 
+              : image.description
+          ) : null}
+        />
+      </ListItem>
+      <Divider />
+    </React.Fragment>
+  );
+};
+
+const SequenceManager = ({ open, onClose, images, onUpdateSequence }) => {
   const [orderedImages, setOrderedImages] = useState([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize ordered images from props
+  // Set up sensors for drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Initialize ordered images when modal opens
   useEffect(() => {
-    setOrderedImages([...images]);
-  }, [images]);
+    if (open && Array.isArray(images)) {
+      setOrderedImages([...images]);
+      setHasChanges(false);
+    }
+  }, [open, images]);
 
   // Handle drag end
-  const handleDragEnd = (result) => {
-    if (!result.destination) return;
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
     
-    const items = Array.from(orderedImages);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    // Update the state with new order
-    setOrderedImages(items);
-    setHasChanges(true);
+    if (active.id !== over.id) {
+      setOrderedImages((items) => {
+        const oldIndex = items.findIndex((item) => item._id === active.id);
+        const newIndex = items.findIndex((item) => item._id === over.id);
+        
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        setHasChanges(true);
+        return newOrder;
+      });
+    }
   };
 
   // Save the new sequence to the backend
@@ -33,7 +142,7 @@ const SequenceManager = ({ images, onUpdateSequence }) => {
     }));
     
     onUpdateSequence(sequenceUpdates);
-    setHasChanges(false);
+    onClose();
   };
 
   // Reset to original order
@@ -42,80 +151,79 @@ const SequenceManager = ({ images, onUpdateSequence }) => {
     setHasChanges(false);
   };
 
-  // If no images, show message
-  if (!images || images.length === 0) {
-    return <p>No images available to reorder.</p>;
-  }
-
   return (
-    <div>
-      <p>Drag and drop images to reorder them in the carousel:</p>
-      
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="images">
-          {(provided) => (
-            <ListGroup
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="mb-3"
+    <Dialog 
+      open={open} 
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>
+        Manage Image Sequence
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Typography paragraph>
+          Drag and drop images to reorder them in the carousel. Changes will not be saved until you click "Save Order".
+        </Typography>
+        
+        {!orderedImages || orderedImages.length === 0 ? (
+          <Typography>No images available to reorder.</Typography>
+        ) : (
+          <Paper variant="outlined" sx={{ mt: 2 }}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              {orderedImages.map((image, index) => (
-                <Draggable key={image._id} draggableId={image._id} index={index}>
-                  {(provided) => (
-                    <ListGroup.Item
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className="d-flex align-items-center"
-                    >
-                      <Row className="w-100 align-items-center">
-                        <Col xs={1} className="text-center">
-                          {index + 1}
-                        </Col>
-                        <Col xs={2}>
-                          <Image
-                            src={`http://localhost:5000${image.imageUrl}`}
-                            alt={image.title}
-                            thumbnail
-                            style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                          />
-                        </Col>
-                        <Col>
-                          <div className="ms-3">
-                            <strong>{image.title}</strong>
-                            {image.description && (
-                              <p className="mb-0 text-muted small">{image.description.substring(0, 80)}...</p>
-                            )}
-                          </div>
-                        </Col>
-                      </Row>
-                    </ListGroup.Item>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </ListGroup>
-          )}
-        </Droppable>
-      </DragDropContext>
-      
-      <div className="d-flex justify-content-end gap-2">
-        <Button
-          variant="secondary"
+              <SortableContext
+                items={orderedImages.map(img => img._id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <List sx={{ padding: 0 }}>
+                  {orderedImages.map((image, index) => (
+                    <SortableItem 
+                      key={image._id} 
+                      image={image} 
+                      index={index} 
+                    />
+                  ))}
+                </List>
+              </SortableContext>
+            </DndContext>
+          </Paper>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button 
+          startIcon={<RestoreIcon />}
           onClick={resetSequence}
           disabled={!hasChanges}
         >
           Reset
         </Button>
-        <Button
-          variant="primary"
+        <Button onClick={onClose}>Cancel</Button>
+        <Button 
           onClick={saveSequence}
+          variant="contained" 
+          color="primary"
+          startIcon={<SaveIcon />}
           disabled={!hasChanges}
         >
-          Save New Order
+          Save Order
         </Button>
-      </div>
-    </div>
+      </DialogActions>
+    </Dialog>
   );
 };
 

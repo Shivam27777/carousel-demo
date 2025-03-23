@@ -1,96 +1,138 @@
-import React, { useState } from 'react';
-import { Form, Button, InputGroup } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Box,
+  Typography,
+  Slider,
+  IconButton,
+  Chip,
+  InputAdornment
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import TimerIcon from '@mui/icons-material/Timer';
 
-const IntervalControl = ({ currentInterval, onIntervalChange }) => {
-  const [intervalValue, setIntervalValue] = useState(currentInterval / 1000);
-  const [isEditing, setIsEditing] = useState(false);
+const IntervalControl = ({ open, onClose, currentInterval, onIntervalChange }) => {
+    const [intervalValue, setIntervalValue] = useState(currentInterval / 1000);
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Validate input
-    let value = parseFloat(intervalValue);
-    
-    if (isNaN(value) || value <= 0) {
-      value = 5; // Default to 5 seconds if invalid
-    }
-    
-    // Convert to milliseconds and update
-    const milliseconds = Math.round(value * 1000);
-    onIntervalChange(milliseconds);
-    setIsEditing(false);
+    // Reset value when modal opens
+    useEffect(() => {
+      if (open) {
+        setIntervalValue(currentInterval / 1000);
+      }
+    }, [open, currentInterval]);
+  
+    // Handle slider change
+    const handleSliderChange = (event, newValue) => {
+      setIntervalValue(newValue);
+    };
+  
+    // Handle input change
+    const handleInputChange = (event) => {
+      const value = parseFloat(event.target.value);
+      if (!isNaN(value) && value > 0) {
+        setIntervalValue(value);
+      }
+    };
+  
+    // Handle save
+    const handleSave = () => {
+      // Convert to milliseconds
+      const milliseconds = Math.round(intervalValue * 1000);
+      onIntervalChange(milliseconds);
+    };
+  
+    // Preset interval options
+    const presetIntervals = [
+      { label: '2s', value: 2 },
+      { label: '5s', value: 5 },
+      { label: '10s', value: 10 },
+      { label: '30s', value: 30 },
+    ];
+  
+    return (
+      <Dialog 
+        open={open} 
+        onClose={onClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Rotation Interval Settings
+          <IconButton
+            aria-label="close"
+            onClick={onClose}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ my: 2 }}>
+            <Typography gutterBottom>
+              Set how long each image appears (in seconds):
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 3 }}>
+              <TimerIcon color="action" />
+              <Slider
+                value={intervalValue}
+                onChange={handleSliderChange}
+                min={1}
+                max={30}
+                step={0.5}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value}s`}
+                sx={{ flexGrow: 1, mx: 2 }}
+              />
+              <TextField
+                value={intervalValue}
+                onChange={handleInputChange}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">sec</InputAdornment>,
+                }}
+                sx={{ width: '100px' }}
+              />
+            </Box>
+            
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+              Quick presets:
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {presetIntervals.map((preset) => (
+                <Chip
+                  key={preset.value}
+                  label={preset.label}
+                  clickable
+                  color={intervalValue === preset.value ? 'primary' : 'default'}
+                  onClick={() => setIntervalValue(preset.value)}
+                />
+              ))}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            color="primary"
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
   };
-
-  // Handle input change
-  const handleChange = (e) => {
-    setIntervalValue(e.target.value);
-  };
-
-  // Preset interval options
-  const presetIntervals = [
-    { label: '2 sec', value: 2000 },
-    { label: '5 sec', value: 5000 },
-    { label: '10 sec', value: 10000 },
-    { label: '30 sec', value: 30000 },
-  ];
-
-  return (
-    <div>
-      <p>Current rotation interval: <strong>{(currentInterval / 1000).toFixed(1)} seconds</strong></p>
-      
-      {isEditing ? (
-        <Form onSubmit={handleSubmit}>
-          <InputGroup className="mb-3">
-            <Form.Control
-              type="number"
-              min="0.5"
-              step="0.5"
-              value={intervalValue}
-              onChange={handleChange}
-              placeholder="Enter seconds"
-            />
-            <InputGroup.Text>seconds</InputGroup.Text>
-            <Button type="submit" variant="primary">Save</Button>
-            <Button 
-              variant="outline-secondary" 
-              onClick={() => {
-                setIntervalValue(currentInterval / 1000);
-                setIsEditing(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </InputGroup>
-        </Form>
-      ) : (
-        <Button 
-          variant="primary" 
-          onClick={() => setIsEditing(true)}
-          className="mb-3"
-        >
-          Change Interval
-        </Button>
-      )}
-      
-      <div>
-        <p>Quick presets:</p>
-        <div className="d-flex flex-wrap gap-2">
-          {presetIntervals.map((preset) => (
-            <Button
-              key={preset.value}
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => onIntervalChange(preset.value)}
-              active={currentInterval === preset.value}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default IntervalControl;

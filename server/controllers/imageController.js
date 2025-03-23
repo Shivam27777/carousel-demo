@@ -87,7 +87,7 @@ exports.deleteImage = async (req, res) => {
     }
 
     // Delete the image document from the database
-    await image.remove();
+    await Image.findByIdAndDelete(req.params.id)
     
     // Resequence remaining images to maintain sequence integrity
     const remainingImages = await Image.find().sort({ sequence: 1 });
